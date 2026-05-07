@@ -16,6 +16,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
+
     return "Game Price Bot Running!"
 
 
@@ -66,18 +67,17 @@ def send_message(chat_id, text):
 
     url = f"{BASE_URL}/sendMessage"
 
-    response = requests.post(
+    requests.post(
         url,
         data={
             "chat_id": chat_id,
             "text": text
-        }
+        },
+        timeout=10
     )
 
-    print(response.text)
 
-
-# ===== API 데이터 가져오기 =====
+# ===== API 데이터 =====
 def get_data():
 
     response = requests.get(
@@ -88,21 +88,12 @@ def get_data():
     return response.json()
 
 
-# ===== 단일 서버 시세 =====
+# ===== 서버 시세 =====
 def get_server_price(server_name):
 
     if server_name not in SERVER_IDS:
 
-        return """❌ 지원하지 않는 서버입니다
-
-지원 서버:
-• 린델
-• 데포로쥬
-• 켄라우헬
-• 조우
-• 로엔그린
-• 하이네
-• 발라카스"""
+        return None
 
     try:
 
@@ -127,9 +118,7 @@ def get_server_price(server_name):
 {rate}%
 
 🕒 업데이트
-{update_time}
-
-🌐 gamebit.co.kr"""
+{update_time}"""
 
     except Exception as e:
 
@@ -138,7 +127,7 @@ def get_server_price(server_name):
         return "❌ 시세 조회 실패"
 
 
-# ===== 전체 서버 시세 =====
+# ===== 전체 시세 =====
 def get_all_prices():
 
     try:
@@ -191,7 +180,7 @@ def handle_message(message):
     print("입력값:")
     print(text)
 
-    # ===== 전체 시세 =====
+    # ===== 전체시세 =====
     if text == "전체시세":
 
         send_message(
@@ -211,29 +200,25 @@ def handle_message(message):
 
         split_text = text.split()
 
+        # 시세만 입력한 경우
         if len(split_text) < 2:
-
-            send_message(
-                chat_id,
-                """📊 사용 방법
-
-• 시세 린델
-• 시세 켄라우헬
-• 시세 발라카스
-• 전체시세"""
-            )
 
             return
 
         server_name = split_text[1]
 
+        result = get_server_price(
+            server_name
+        )
+
+        # 지원하지 않는 서버
+        if result is None:
+
+            return
+
         send_message(
             chat_id,
             f"📡 {server_name} 서버 시세 조회 중..."
-        )
-
-        result = get_server_price(
-            server_name
         )
 
         send_message(
@@ -241,20 +226,10 @@ def handle_message(message):
             result
         )
 
-    # ===== 기본 메시지 =====
+    # ===== 일반 채팅 무시 =====
     else:
 
-        send_message(
-            chat_id,
-            """🎮 리니지 시세 봇
-
-사용 방법:
-
-• 시세 린델
-• 시세 켄라우헬
-• 시세 발라카스
-• 전체시세"""
-        )
+        return
 
 
 # ===== 업데이트 =====
@@ -270,18 +245,31 @@ def get_updates(offset=None):
 
         params["offset"] = offset
 
-    res = requests.get(
+    response = requests.get(
         url,
-        params=params
+        params=params,
+        timeout=15
     )
 
-    return res.json()
+    return response.json()
 
 
 # ===== 메인 =====
 def main():
 
     offset = None
+
+    # ===== 이전 메시지 제거 =====
+    data = get_updates()
+
+    if (
+        "result" in data
+        and len(data["result"]) > 0
+    ):
+
+        offset = (
+            data["result"][-1]["update_id"] + 1
+        )
 
     while True:
 
@@ -307,11 +295,6 @@ def main():
                         except Exception as e:
 
                             print(e)
-
-                            send_message(
-                                update["message"]["chat"]["id"],
-                                f"오류 발생 😢\n{e}"
-                            )
 
                     offset = (
                         update["update_id"] + 1
