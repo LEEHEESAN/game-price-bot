@@ -1,3 +1,4 @@
+import telebot
 import requests
 import time
 import os
@@ -7,11 +8,12 @@ from threading import Thread
 
 # ===== 설정 =====
 BOT_TOKEN = "8199900540:AAH9ffkY5CTo92FOy_KARJosELCtVQW0ulY"
+bot = telebot.TeleBot(BOT_TOKEN)
 
 BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 # ===== Flask =====
-app = Flask('')
+app = Flask(__name__)
 
 
 @app.route('/')
@@ -67,14 +69,20 @@ def send_message(chat_id, text):
 
     url = f"{BASE_URL}/sendMessage"
 
-    requests.post(
-        url,
-        data={
-            "chat_id": chat_id,
-            "text": text
-        },
-        timeout=10
-    )
+    try:
+
+        requests.post(
+            url,
+            data={
+                "chat_id": chat_id,
+                "text": text
+            },
+            timeout=10
+        )
+
+    except Exception as e:
+
+        print("메시지 전송 오류:", e)
 
 
 # ===== API 데이터 =====
@@ -122,7 +130,7 @@ def get_server_price(server_name):
 
     except Exception as e:
 
-        print(e)
+        print("서버 시세 오류:", e)
 
         return "❌ 시세 조회 실패"
 
@@ -152,7 +160,9 @@ def get_all_prices():
                     f"변동: {rate}%\n\n"
                 )
 
-            except:
+            except Exception as e:
+
+                print(f"{server_name} 오류:", e)
 
                 result_text += (
                     f"❌ {server_name}: 실패\n\n"
@@ -162,7 +172,7 @@ def get_all_prices():
 
     except Exception as e:
 
-        print(e)
+        print("전체 시세 오류:", e)
 
         return "❌ 전체 시세 조회 실패"
 
@@ -203,6 +213,11 @@ def handle_message(message):
         # 시세만 입력한 경우
         if len(split_text) < 2:
 
+            send_message(
+                chat_id,
+                "사용법: 시세 서버이름"
+            )
+
             return
 
         server_name = split_text[1]
@@ -213,6 +228,11 @@ def handle_message(message):
 
         # 지원하지 않는 서버
         if result is None:
+
+            send_message(
+                chat_id,
+                "지원하지 않는 서버입니다."
+            )
 
             return
 
@@ -238,20 +258,28 @@ def get_updates(offset=None):
     url = f"{BASE_URL}/getUpdates"
 
     params = {
-        "timeout": 10
+        "timeout": 30
     }
 
     if offset:
 
         params["offset"] = offset
 
-    response = requests.get(
-        url,
-        params=params,
-        timeout=15
-    )
+    try:
 
-    return response.json()
+        response = requests.get(
+            url,
+            params=params,
+            timeout=35
+        )
+
+        return response.json()
+
+    except Exception as e:
+
+        print("get_updates 오류:", e)
+
+        return {"result": []}
 
 
 # ===== 메인 =====
@@ -294,7 +322,7 @@ def main():
 
                         except Exception as e:
 
-                            print(e)
+                            print("메시지 처리 오류:", e)
 
                     offset = (
                         update["update_id"] + 1
@@ -304,7 +332,7 @@ def main():
 
         except Exception as e:
 
-            print(e)
+            print("메인 루프 오류:", e)
 
             time.sleep(5)
 
@@ -316,4 +344,14 @@ if __name__ == "__main__":
 
     keep_alive()
 
-    main()
+    while True:
+
+        try:
+
+            main()
+
+        except Exception as e:
+
+            print("치명적 오류:", e)
+
+            time.sleep(10)
