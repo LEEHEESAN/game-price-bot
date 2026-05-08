@@ -53,11 +53,13 @@ SERVER_IDS = {
 
     "하이네": "25273",
 
-    "발라카스": "26022"
+    "발라카스": "26022",
+
+    # ===== 메이플플래닛 =====
+    "메이플플래닛": "26192"
 }
 
-
-# ===== API URL =====
+# ===== 리니지 API =====
 API_URL = (
     "https://gamebit.co.kr/"
     "jdata2/total_status.json"
@@ -85,7 +87,7 @@ def send_message(chat_id, text):
         print("메시지 전송 오류:", e)
 
 
-# ===== API 데이터 =====
+# ===== 리니지 API =====
 def get_data():
 
     response = requests.get(
@@ -105,22 +107,68 @@ def get_server_price(server_name):
 
     try:
 
-        data = get_data()
+        # ===== 메이플플래닛 =====
+        if server_name == "메이플플래닛":
 
-        server_id = SERVER_IDS[server_name]
+            response = requests.get(
+                "https://gamebit.co.kr/jdata2/mapleworld/server_26192.json",
+                timeout=10
+            )
 
-        server_data = data[server_id]
+            server_data = response.json()
 
-        price = server_data["price"]
+            print("메이플 데이터:")
+            print(server_data)
 
-        rate = server_data["rate"]
+            price = server_data["current_price"]
 
-        update_time = server_data["last_update"]
+            rate = server_data["rate"]
 
+            update_time = (
+                server_data.get("update_time")
+                or server_data.get("updated_at")
+                or server_data.get("last_update")
+                or "시간정보없음"
+            )
+
+        # ===== 일반 리니지 서버 =====
+        else:
+
+            data = get_data()
+
+            server_id = SERVER_IDS[server_name]
+
+            if server_id not in data:
+
+                return "❌ 서버 데이터 없음"
+
+            server_data = data[server_id]
+
+            price = server_data["price"]
+
+            rate = server_data["rate"]
+
+            update_time = server_data["last_update"]
+
+        # ===== 메이플플래닛 출력 =====
+        if server_name == "메이플플래닛":
+
+            return f"""💰 메이플플래닛 메소 시세
+
+💵 1억 메소당
+{price:,.0f}원
+
+📈 변동률
+{rate}%
+
+🕒 업데이트
+{update_time}"""
+
+        # ===== 일반 서버 출력 =====
         return f"""📊 {server_name} 서버
 
-💰 현재 시세
-{price:,.2f}
+💰 1만 아데나당
+{price:,.0f}원
 
 📈 변동률
 {rate}%
@@ -132,7 +180,7 @@ def get_server_price(server_name):
 
         print("서버 시세 오류:", e)
 
-        return "❌ 시세 조회 실패"
+        return f"❌ 시세 조회 실패\n{e}"
 
 
 # ===== 전체 시세 =====
@@ -148,17 +196,40 @@ def get_all_prices():
 
             try:
 
-                server_data = data[server_id]
+                # ===== 메이플플래닛 =====
+                if server_name == "메이플플래닛":
 
-                price = server_data["price"]
+                    response = requests.get(
+                        "https://gamebit.co.kr/jdata2/mapleworld/server_26192.json",
+                        timeout=10
+                    )
 
-                rate = server_data["rate"]
+                    server_data = response.json()
 
-                result_text += (
-                    f"💰 {server_name}\n"
-                    f"시세: {price:,.2f}\n"
-                    f"변동: {rate}%\n\n"
-                )
+                    price = server_data["current_price"]
+
+                    rate = server_data["rate"]
+
+                    result_text += (
+                        f"💰 {server_name}\n"
+                        f"1억 메소당: {price:,.0f}원\n"
+                        f"변동: {rate}%\n\n"
+                    )
+
+                # ===== 일반 서버 =====
+                else:
+
+                    server_data = data[server_id]
+
+                    price = server_data["price"]
+
+                    rate = server_data["rate"]
+
+                    result_text += (
+                        f"💰 {server_name}\n"
+                        f"1만 아데나당: {price:,.0f}원\n"
+                        f"변동: {rate}%\n\n"
+                    )
 
             except Exception as e:
 
