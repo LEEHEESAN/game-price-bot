@@ -38,6 +38,11 @@ def keep_alive():
     t.start()
 
 
+# ===== 서버 별칭 =====
+ALIASES = {
+    "메이플": "메이플플래닛",
+}
+
 # ===== 서버 ID =====
 SERVER_IDS = {
 
@@ -291,7 +296,7 @@ def handle_message(message):
 
             return
 
-        server_name = split_text[1]
+        server_name = ALIASES.get(split_text[1], split_text[1])
 
         result = get_server_price(
             server_name
