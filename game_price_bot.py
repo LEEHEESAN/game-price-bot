@@ -106,6 +106,8 @@ def get_data():
 # ===== 서버 시세 =====
 def get_server_price(server_name):
 
+    server_name = ALIASES.get(server_name, server_name)
+
     if server_name not in SERVER_IDS:
 
         return None
